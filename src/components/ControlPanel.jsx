@@ -1,5 +1,5 @@
 import React from 'react';
-import { Settings2, Square, Play } from 'lucide-react';
+import { Settings2, Square, Play, Loader2 } from 'lucide-react';
 import { ControlNumber } from './ControlNumber';
 import { PATTERNS } from '../constants/patterns';
 
@@ -8,7 +8,8 @@ export function ControlPanel({
   muteBars, setMuteBars,
   preset, setPreset,
   bpm, setBpm,
-  isPlaying, togglePlay
+  isPlaying, togglePlay,
+  isReady
 }) {
   return (
     <div className="p-6 bg-zinc-900/50">
@@ -25,16 +26,16 @@ export function ControlPanel({
           </span>
         </div>
         <div className="grid grid-cols-3 gap-2">
-          {Object.entries(PATTERNS).map(([key, name]) => (
+          {Object.entries(PATTERNS).map(([key, data]) => (
             <button
               key={key}
               onClick={() => setPreset(key)}
-              className={`py-2 rounded-xl text-sm font-medium transition-colors ${preset === key
+              className={`py-2 px-1 rounded-xl text-xs font-medium transition-colors ${preset === key
                 ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
                 : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
                 }`}
             >
-              {name}
+              {data.name}
             </button>
           ))}
         </div>
@@ -71,12 +72,20 @@ export function ControlPanel({
       {/* 재생 버튼 */}
       <button
         onClick={togglePlay}
-        className={`w-full py-5 rounded-2xl flex items-center justify-center gap-3 text-xl font-bold transition-all shadow-xl active:scale-[0.98] ${isPlaying
-          ? 'bg-zinc-800 hover:bg-zinc-700 text-white'
-          : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/25'
+        disabled={!isReady}
+        className={`w-full py-5 rounded-2xl flex items-center justify-center gap-3 text-xl font-bold transition-all shadow-xl active:scale-[0.98] ${!isReady
+            ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+            : isPlaying
+              ? 'bg-zinc-800 hover:bg-zinc-700 text-white'
+              : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/25'
           }`}
       >
-        {isPlaying ? (
+        {!isReady ? (
+          <>
+            <Loader2 className="animate-spin" size={24} />
+            <span>오디오 로딩중...</span>
+          </>
+        ) : isPlaying ? (
           <>
             <Square fill="currentColor" size={24} />
             <span>정지</span>

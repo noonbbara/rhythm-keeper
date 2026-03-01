@@ -32,6 +32,7 @@ export default function App() {
           setBpm={actions.setBpm}
           isPlaying={state.isPlaying}
           togglePlay={actions.togglePlay}
+          isReady={state.isReady}
         />
       </div>
     </div>

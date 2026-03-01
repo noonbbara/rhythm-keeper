@@ -1,13 +1,15 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { drumSynth } from '../lib/DrumSynth';
+import { PATTERNS } from '../constants/patterns';
 
 export function useRhythmEngine() {
   // 상태 관리
   const [isPlaying, setIsPlaying] = useState(false);
   const [bpm, setBpm] = useState(100);
-  const [playBars, setPlayBars] = useState(4); // n개의 루프 (소리 남)
-  const [muteBars, setMuteBars] = useState(4); // m개의 루프 (소리 안남)
-  const [preset, setPreset] = useState('basic'); // 드럼 패턴
+  const [playBars, setPlayBars] = useState(4);
+  const [muteBars, setMuteBars] = useState(4);
+  const [preset, setPreset] = useState('standard_8beat');
+  const [isReady, setIsReady] = useState(false); // 샘플 로딩 상태
 
   // 시각적 피드백을 위한 상태
   const [currentPhase, setCurrentPhase] = useState('play');
@@ -30,7 +32,7 @@ export function useRhythmEngine() {
   const lookahead = 25; // 스케줄러 호출 주기 (ms)
   const scheduleAheadTime = 0.1; // 미리 스케줄링할 시간 (초)
   const nextNoteTime = useRef(0);
-  const currentBeatInBar = useRef(0); // 0, 1, 2, 3
+  const currentTick = useRef(0); // 0 ~ 15 (16비트 레졸루션)
   const currentBarCount = useRef(0);
   const phaseRef = useRef('play'); // 'play' or 'mute'
 
@@ -38,14 +40,30 @@ export function useRhythmEngine() {
   const drawQueue = useRef([]);
   const animationRef = useRef(null);
 
+  // 컴포넌트 마운트 시 오디오 버퍼 로드
+  useEffect(() => {
+    let mounted = true;
+    (async () => {
+      try {
+        await drumSynth.init(); // 버퍼 다운로드 및 디코딩 대기
+        if (mounted) setIsReady(true);
+      } catch (err) {
+        console.error("Failed to initialize drum samples:", err);
+      }
+    })();
+    return () => { mounted = false; };
+  }, []);
+
   // 다음 노트의 시간을 계산
   const nextNote = useCallback(() => {
     const secondsPerBeat = 60.0 / bpmRef.current;
-    nextNoteTime.current += secondsPerBeat;
-    currentBeatInBar.current++;
+    const secondsPerTick = secondsPerBeat / 4.0;
 
-    if (currentBeatInBar.current === 4) {
-      currentBeatInBar.current = 0;
+    nextNoteTime.current += secondsPerTick;
+    currentTick.current++;
+
+    if (currentTick.current === 16) {
+      currentTick.current = 0;
       currentBarCount.current++;
 
       if (phaseRef.current === 'play' && currentBarCount.current >= playBarsRef.current) {
@@ -59,24 +77,30 @@ export function useRhythmEngine() {
   }, []);
 
   // 노트 스케줄링
-  const scheduleNote = useCallback((beatNumber, time, phase, barIndex) => {
-    drawQueue.current.push({ note: beatNumber, time, phase, bar: barIndex });
+  const scheduleNote = useCallback((tickNumber, time, phase, barIndex) => {
+    if (tickNumber % 4 === 0) {
+      const visualBeat = Math.floor(tickNumber / 4);
+      drawQueue.current.push({ note: visualBeat, time, phase, bar: barIndex });
+    } else {
+      drawQueue.current.push({ note: -1, time, phase, bar: barIndex });
+    }
 
     if (phase === 'play') {
       const p = presetRef.current;
+      const pattern = PATTERNS[p];
+      if (!pattern) return;
 
-      drumSynth.playHihat(time);
+      const sounds = pattern.sequence[tickNumber] || [];
 
-      if (p === 'basic') {
-        if (beatNumber === 0 || beatNumber === 2) drumSynth.playKick(time);
-        if (beatNumber === 1 || beatNumber === 3) drumSynth.playSnare(time);
-      } else if (p === 'four') {
-        drumSynth.playKick(time);
-        if (beatNumber === 1 || beatNumber === 3) drumSynth.playSnare(time);
-      } else if (p === 'half') {
-        if (beatNumber === 0) drumSynth.playKick(time);
-        if (beatNumber === 2) drumSynth.playSnare(time);
-      }
+      sounds.forEach(sound => {
+        if (sound === 'K') drumSynth.playKick(time);
+        if (sound === 'S') drumSynth.playSnare(time);
+        if (sound === 'H') drumSynth.playClosedHihat(time);
+        if (sound === 'O') drumSynth.playOpenHihat(time);
+        if (sound === 'C') drumSynth.playClap(time);
+        if (sound === 'T') drumSynth.playTom(time);
+        if (sound === 'I') drumSynth.playTink(time);
+      });
     }
   }, []);
 
@@ -85,7 +109,7 @@ export function useRhythmEngine() {
     if (!drumSynth.ctx) return;
 
     while (nextNoteTime.current < drumSynth.ctx.currentTime + scheduleAheadTime) {
-      scheduleNote(currentBeatInBar.current, nextNoteTime.current, phaseRef.current, currentBarCount.current);
+      scheduleNote(currentTick.current, nextNoteTime.current, phaseRef.current, currentBarCount.current);
       nextNote();
     }
     timerRef.current = setTimeout(scheduler, lookahead);
@@ -98,7 +122,9 @@ export function useRhythmEngine() {
 
     while (drawQueue.current.length && drawQueue.current[0].time <= currentTime) {
       const event = drawQueue.current.shift();
-      setActiveBeat(event.note);
+      if (event.note !== -1) {
+        setActiveBeat(event.note);
+      }
       setCurrentPhase(event.phase);
       setCurrentBarIndex(event.bar);
     }
@@ -106,7 +132,9 @@ export function useRhythmEngine() {
   }, []);
 
   // 재생 / 정지 토글
-  const togglePlay = () => {
+  const togglePlay = async () => {
+    if (!isReady) return; // 로딩 중에는 아무 동작 안함
+
     if (isPlaying) {
       setIsPlaying(false);
       clearTimeout(timerRef.current);
@@ -114,10 +142,13 @@ export function useRhythmEngine() {
       setActiveBeat(-1);
       drawQueue.current = [];
     } else {
-      drumSynth.init();
-      setIsPlaying(true);
+      // User gesture로 인해 AudioContext 확실히 활성화
+      if (drumSynth.ctx.state === 'suspended') {
+        await drumSynth.ctx.resume();
+      }
 
-      currentBeatInBar.current = 0;
+      setIsPlaying(true);
+      currentTick.current = 0;
       currentBarCount.current = 0;
       phaseRef.current = 'play';
       nextNoteTime.current = drumSynth.ctx.currentTime + 0.1;
@@ -136,7 +167,7 @@ export function useRhythmEngine() {
   }, []);
 
   return {
-    state: { isPlaying, bpm, playBars, muteBars, preset, currentPhase, activeBeat, currentBarIndex },
+    state: { isPlaying, bpm, playBars, muteBars, preset, currentPhase, activeBeat, currentBarIndex, isReady },
     actions: { setBpm, setPlayBars, setMuteBars, setPreset, togglePlay }
   };
 }
