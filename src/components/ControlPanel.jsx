@@ -15,7 +15,7 @@ export function ControlPanel({
     <div className="p-6 bg-zinc-900/50">
       <div className="grid grid-cols-2 gap-4 mb-6">
         <ControlNumber label="재생 마디 (Play Loops)" value={playBars} setter={setPlayBars} min={1} max={16} />
-        <ControlNumber label="묵음 마디 (Mute Loops)" value={muteBars} setter={setMuteBars} min={1} max={16} />
+        <ControlNumber label="묵음 마디 (Mute Loops)" value={muteBars} setter={setMuteBars} min={0} max={16} />
       </div>
 
       {/* 프리셋 선택 */}
@@ -74,10 +74,10 @@ export function ControlPanel({
         onClick={togglePlay}
         disabled={!isReady}
         className={`w-full py-5 rounded-2xl flex items-center justify-center gap-3 text-xl font-bold transition-all shadow-xl active:scale-[0.98] ${!isReady
-            ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
-            : isPlaying
-              ? 'bg-zinc-800 hover:bg-zinc-700 text-white'
-              : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/25'
+          ? 'bg-zinc-800 text-zinc-500 cursor-not-allowed'
+          : isPlaying
+            ? 'bg-zinc-800 hover:bg-zinc-700 text-white'
+            : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/25'
           }`}
       >
         {!isReady ? (

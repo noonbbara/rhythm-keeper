@@ -67,7 +67,9 @@ export function useRhythmEngine() {
       currentBarCount.current++;
 
       if (phaseRef.current === 'play' && currentBarCount.current >= playBarsRef.current) {
-        phaseRef.current = 'mute';
+        if (muteBarsRef.current > 0) {
+          phaseRef.current = 'mute';
+        }
         currentBarCount.current = 0;
       } else if (phaseRef.current === 'mute' && currentBarCount.current >= muteBarsRef.current) {
         phaseRef.current = 'play';
