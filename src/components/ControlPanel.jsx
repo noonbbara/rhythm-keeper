@@ -30,8 +30,8 @@ export function ControlPanel({
               key={key}
               onClick={() => setPreset(key)}
               className={`py-2 rounded-xl text-sm font-medium transition-colors ${preset === key
-                  ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
-                  : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
+                ? 'bg-indigo-600 text-white shadow-lg shadow-indigo-500/20'
+                : 'bg-zinc-800 text-zinc-400 hover:bg-zinc-700'
                 }`}
             >
               {name}
@@ -51,17 +51,17 @@ export function ControlPanel({
             onBlur={(e) => {
               let val = parseInt(e.target.value);
               if (isNaN(val) || val < 40) val = 40;
-              if (val > 240) val = 240;
+              if (val > 300) val = 300;
               setBpm(val);
             }}
-            className="bg-transparent text-3xl font-bold text-white tracking-tighter w-20 text-right focus:outline-none focus:border-b focus:border-indigo-500 rounded-none border-b border-transparent transition-colors"
+            className="bg-transparent text-3xl font-bold text-white tracking-tighter w-20 text-right focus:outline-none focus:border-b focus:border-indigo-500 rounded-none border-b border-transparent transition-colors [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
             title="클릭하여 숫자 입력"
           />
         </div>
         <input
           type="range"
           min="40"
-          max="240"
+          max="300"
           value={bpm}
           onChange={(e) => setBpm(parseInt(e.target.value))}
           className="w-full h-2 bg-zinc-800 rounded-lg appearance-none cursor-pointer accent-indigo-500"
@@ -72,8 +72,8 @@ export function ControlPanel({
       <button
         onClick={togglePlay}
         className={`w-full py-5 rounded-2xl flex items-center justify-center gap-3 text-xl font-bold transition-all shadow-xl active:scale-[0.98] ${isPlaying
-            ? 'bg-zinc-800 hover:bg-zinc-700 text-white'
-            : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/25'
+          ? 'bg-zinc-800 hover:bg-zinc-700 text-white'
+          : 'bg-indigo-600 hover:bg-indigo-500 text-white shadow-indigo-500/25'
           }`}
       >
         {isPlaying ? (
